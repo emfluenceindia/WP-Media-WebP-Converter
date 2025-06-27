@@ -18,8 +18,14 @@
 
 defined('ABSPATH') || exit;
 
-if( is_admin() ) {
+/**
+ * We need to make sure that the user is on the admin dashboard
+ * and has the Administrative privilege.
+ */
+if( is_admin() && current_user_can( 'manage_option' ) ) {
     require_once 'includes/wpmwc-converter.php';
+} else {
+    wp_die( 'Sorry! You are not authorized to perform this action!', 'Unauthorized access' );
 }
 
 /**
@@ -155,8 +161,8 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), 'wpmwc_add_plu
     if( ! empty( $meta[ 'sizes' ] ) ) {
         foreach( $meta['sizes'] as $size ) {
             $size_filename = $basedir . '/' . pathinfo( $size['file'], PATHINFO_FILENAME ) . '.webp';
-            if( file_exists( $size_filename ) ) {
-                @unlink( $size_filename );
+            if( file_exists( $size_filename ) && is_writable( $size_filename ) ) {
+                unlink( $size_filename );
             }
         }
     }
@@ -351,7 +357,7 @@ function wpmwc_convert_individual_image() {
     $id             = intval($_POST['id']);
     $overwrite      = isset( $_POST[ 'overwrite' ] ) ? (bool)$_POST[ 'overwrite' ] : false;
     $quality        = isset( $_POST[ 'image_quality' ] ) ? intval( $_POST[ 'image_quality' ] ) : 100;
-    $action_mode    = isset( $_POST[ 'conversion_mode' ] ) ? $_POST[ 'conversion_mode' ] : 'none';
+    $action_mode    = isset( $_POST[ 'conversion_mode' ] ) ? sanitize_text_field( $_POST[ 'conversion_mode' ] ) : 'none';
     $file           = get_attached_file( $id );
     $info           = pathinfo( $file );
 
@@ -366,7 +372,7 @@ function wpmwc_convert_individual_image() {
     // $info           = pathinfo( $file );
 
     $metadata       = wp_get_attachment_metadata( $id );
-    $thumb_sizes    = $metadata[ 'sizes' ];
+    $thumb_sizes    = isset(  $metadata[ 'sizes' ] ) ? $metadata[ 'sizez' ] : [];
     
     $thumb_files    = array();
     foreach( $thumb_sizes as $thumb_size ) {
